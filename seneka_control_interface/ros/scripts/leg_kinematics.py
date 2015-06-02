@@ -187,19 +187,12 @@ class Comm:
 		return std_srvs.srv.EmptyResponse()
 		
 	def scan(self, _dummy):
-		req=laser_assembler.srv.AssembleScansRequest()
-		req.begin = rospy.Time.now()
-		kin = [[0], [math.pi], [2*math.pi-0.05]]
-		# use shortest path
-		if self.joint_turret in self.last_pos and self.last_pos[self.joint_turret]>math.pi:
-				kin.reverse()
-		r = self.send_kinematics(kin,[self.joint_turret], False)
-		req.end = rospy.Time.now()
-		
-		resp = self.srv_assemble_scans(req)
-		self.pub_pc.publish(resp.cloud)
-		
-		self.send_response("scan", r)
+		while True:
+			kin = [[0], [math.pi], [2*math.pi-0.05]]
+			# use shortest path
+			if self.joint_turret in self.last_pos and self.last_pos[self.joint_turret]>math.pi:
+					kin.reverse()
+			r = self.send_kinematics(kin,[self.joint_turret], False)
 		
 		return std_srvs.srv.EmptyResponse()
 
