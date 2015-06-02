@@ -38,6 +38,9 @@ import std_srvs.srv
 import seneka_control_interface.msg
 import laser_assembler.srv
 
+import socket
+
+
 class StateMachine:
     def __init__(self):
         self.handlers = {}
@@ -69,8 +72,11 @@ class StateMachine:
             else:
                 handler = self.handlers[newState.upper()]
 
-class Comm:
+import threading
+class Comm(threading.Thread):
 	def __init__(self):
+		threading.Thread.__init__(self) 
+		
 		#configuration
 		self.kin_extend = rospy.get_param('~kinematics_extend')
 		self.kin_retract = rospy.get_param('~kinematics_retract')
@@ -93,6 +99,8 @@ class Comm:
 		rospy.Service('scan', std_srvs.srv.Empty, self.scan)
 		rospy.Subscriber("move_turret", std_msgs.msg.Float64, self.on_turret_aim)
 		rospy.Subscriber("move_camera", std_msgs.msg.Float64, self.on_camera_aim)
+		
+		self.start()
 		
 	def send_response(self, msg, success=True):
 		msg = std_msgs.msg.String(str(msg)+" "+str(success))
@@ -195,6 +203,33 @@ class Comm:
 			r = self.send_kinematics(kin,[self.joint_turret], False)
 		
 		return std_srvs.srv.EmptyResponse()
+		
+	def run(self):	#tcp_server
+		#WiFi TCP/UDP Controller
+		TCP_IP = ''
+		TCP_PORT = 50007
+		BUFFER_SIZE = 20  # Normally 1024, but we want fast response
+		
+		while True:
+			try:
+				s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				s.bind((HOST, PORT))
+				s.listen(1)
+				conn, addr = s.accept()
+				print 'Connected by', addr
+				while 1:
+				    data = conn.recv(1024)
+				    if not data: break
+				    if len(data)>0:
+				    	if data[0]=='s':
+				    		self.scan(0)
+				    	elif data[0]=='e':
+				    		self.extend(0)
+				    	elif data[0]=='r':
+				    		self.retract(0)
+				conn.close()
+			except:
+				pass
 
 
 if __name__ == '__main__':
